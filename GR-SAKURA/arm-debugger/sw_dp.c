@@ -10,20 +10,20 @@ static void tick(void)
 {
 	// OFF 出力
 	tmr_waiting = 1;
-	CMT0.CMCNT = 0;
+	cmt0_clear_count();
 	PORT2.PODR.BIT.B2 = 0;
 
 	// タイマ起動
-	CMT.CMSTR0.BIT.STR0 = 0x01;
+	cmt0_start();
 	while(tmr_waiting != 0);	
 
 	// ON 出力
 	tmr_waiting = 1;
-	CMT0.CMCNT = 0;
+	cmt0_clear_count();
 	PORT2.PODR.BIT.B2 = 1;
 
 	// タイマ起動
-	CMT.CMSTR0.BIT.STR0 = 0x01;
+	cmt0_start();
 	while(tmr_waiting != 0);
 
 	return;
@@ -47,7 +47,7 @@ void init_swd(void)
 	init_sw_port();
 
 	// CMT初期化
-	init_cmt0(tick_tmr_event_handler);
+	cmt0_init(tick_tmr_event_handler);
 }
 void select_swd(void)
 {
@@ -97,12 +97,13 @@ void select_swd(void)
 }
 
 static unsigned char ack[3] = 0;
-static unsigned int rVal = 0;
 static unsigned char parity = 0;
-void readID(void)
+uint32_t readIDCode(void)
 {
-	volatile unsigned char reg;
+	volatile uint8_t reg;
+	volatile uint32_t idcode;
 	int i;
+
 	// Start:High
 	PORT2.PODR.BIT.B1 = 1;
 	tick();
@@ -149,14 +150,17 @@ void readID(void)
 	
 	PORT2.PODR.BIT.B2 = 1;
 	for(i = 0; i < 500; i++);
-	rVal = 0;
+	
+	idcode = 0;
 	for(i = 0; i < 32; i++)
   	{
 		tick();
 		reg = PORT2.PIDR.BIT.B1;
-    		rVal |= (reg << i);
+    		idcode |= (reg << i);
 	}
 	// Read parity
 	tick();
 	parity = PORT2.PIDR.BIT.B1;
+	
+	return idcode;
 }
