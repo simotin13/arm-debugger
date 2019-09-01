@@ -22,6 +22,7 @@
       <Path>cmt0.h</Path>
       <Path>clock.c</Path>
       <Path>sw_dp.c</Path>
+      <Path>sw_dp.h</Path>
     </Files>
     <Device Series="RX">R5F563NYHxFP</Device>
     <BuildOptions Name="CC-RX" Version="V2.06.00">

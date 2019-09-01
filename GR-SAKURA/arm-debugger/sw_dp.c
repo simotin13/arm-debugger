@@ -49,6 +49,7 @@ void init_swd(void)
 	// CMTèâä˙âª
 	cmt0_init(tick_tmr_event_handler);
 }
+
 void select_swd(void)
 {
 	volatile int i;
@@ -96,7 +97,7 @@ void select_swd(void)
 	for(i = 0; i < 500; i++);
 }
 
-int32_t read_dp_reg(uint8_t addrHi, uint8_t addrLow, uint32_t *pVal)
+int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 {
 	volatile uint8_t reg;
 	volatile uint32_t val;
@@ -120,12 +121,14 @@ int32_t read_dp_reg(uint8_t addrHi, uint8_t addrLow, uint32_t *pVal)
 	tick();
 	
 	// A(3:2) LSB
-	onBits += addrLow; 
-	PORT2.PODR.BIT.B1 = addrLow;
+	reg = (addr >> 2) & 0x01;
+	onBits += reg; 
+	PORT2.PODR.BIT.B1 = reg;
 	tick();
 
-	onBits += addrHi; 
-	PORT2.PODR.BIT.B1 = addrHi;
+	reg = (addr >> 3) & 0x01;
+	onBits += reg; 
+	PORT2.PODR.BIT.B1 = reg;
 	tick();
 
 	// parity ODD
@@ -214,10 +217,9 @@ int32_t read_dp_reg(uint8_t addrHi, uint8_t addrLow, uint32_t *pVal)
 	return 0;
 }
 
-int32_t write_dp_reg(uint8_t addrHi, uint8_t addrLow, uint32_t *pVal)
+int32_t write_dp_reg(uint8_t addr, uint32_t val)
 {
 	volatile uint8_t reg;
-	volatile uint32_t val;
 	volatile uint32_t onBits = 0;
 	volatile uint8_t ack[3] = 0;
 	volatile uint8_t parity = 0;
@@ -237,12 +239,14 @@ int32_t write_dp_reg(uint8_t addrHi, uint8_t addrLow, uint32_t *pVal)
 	tick();
 	
 	// A(3:2) LSB
-	onBits += addrLow;
-	PORT2.PODR.BIT.B1 = addrLow;
+	reg = (addr >> 2) & 0x01;
+	onBits += reg;
+	PORT2.PODR.BIT.B1 = reg;
 	tick();
 
-	onBits += addrHi;
-	PORT2.PODR.BIT.B1 = addrHi;
+	reg = (addr >> 3) & 0x01;
+	onBits += reg;
+	PORT2.PODR.BIT.B1 = reg;
 	tick();
 
 	// parity even
@@ -283,7 +287,6 @@ int32_t write_dp_reg(uint8_t addrHi, uint8_t addrLow, uint32_t *pVal)
 
 
 	PORT2.PDR.BIT.B1 = 1;
-	val = *pVal;
 	onBits = 0;
 	for(i = 0; i < 32; i++)
   	{
