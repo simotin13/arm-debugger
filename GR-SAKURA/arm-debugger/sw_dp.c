@@ -2,7 +2,7 @@
 #include <iodefine.h>
 #include "cmt0.h"
 
-static tmr_waiting = 0;
+static uint32_t tmr_waiting = 0;
 
 static const unsigned char sw_select_packet[16] = {0,1,1,1, 1,0,0,1, 1,1,1,0, 0,1,1,1};
 
@@ -221,7 +221,7 @@ int32_t write_dp_reg(uint8_t addr, uint32_t val)
 {
 	volatile uint8_t reg;
 	volatile uint32_t onBits = 0;
-	volatile uint8_t ack[3] = 0;
+	volatile uint8_t ack[3] = {0};
 	volatile uint8_t parity = 0;
 	volatile uint8_t debug = 0;
 	int i;

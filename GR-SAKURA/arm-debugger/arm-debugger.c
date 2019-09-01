@@ -20,15 +20,22 @@ void main(void)
 
 	// Read IDCODE
 	reg = 0;
-	ret = read_dp_reg(0x00, &idcode);
+	ret = read_dp_reg(REG_R_IDCODE, &idcode);
 
 	// write CTRL
 	reg = 0x50000000;
-	ret = write_dp_reg(0x04, reg);
+	ret = write_dp_reg(REG_RW_CTRL_STAT, reg);
 
 	// read CTRL
 	reg = 0;
-	ret = read_dp_reg(0x04, &reg);
+	ret = read_dp_reg(REG_RW_CTRL_STAT, &reg);
+	
+	reg = 0x1E;
+	ret = write_dp_reg(REG_W_ABORT, reg);
+
+	// read CTRL
+	reg = 0;
+	ret = read_dp_reg(REG_RW_CTRL_STAT, &reg);
 
 	while(1);
 }
