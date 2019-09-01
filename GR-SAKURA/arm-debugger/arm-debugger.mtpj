@@ -359,6 +359,7 @@
       <COptionCommandLine-DefaultValue>-isa=rxv1
 -fpu
 -dbl_size=8
+-include=.
 -output=obj
 -obj_path=%BuildModeName%
 -debug
@@ -427,7 +428,7 @@
       <COptionFloatOrder-DefaultValue>False</COptionFloatOrder-DefaultValue>
       <COptionIncode-DefaultValue>Sjis</COptionIncode-DefaultValue>
       <IsLockedByUser>False</IsLockedByUser>
-      <TimeTagModified--0>-8586343233632082060</TimeTagModified--0>
+      <TimeTagModified--0>-8586342998952686758</TimeTagModified--0>
       <COptionLangC-0>C</COptionLangC-0>
       <COptionListfile-0>False</COptionListfile-0>
       <COptionLogo-0>False</COptionLogo-0>
@@ -465,6 +466,7 @@
       <COptionCommandLine-0>-isa=rxv1
 -fpu
 -dbl_size=8
+-include=.
 -output=obj
 -obj_path=%BuildModeName%
 -debug

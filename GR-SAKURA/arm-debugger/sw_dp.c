@@ -96,12 +96,13 @@ void select_swd(void)
 	for(i = 0; i < 500; i++);
 }
 
-static unsigned char ack[3] = 0;
-static unsigned char parity = 0;
-uint32_t readIDCode(void)
+int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 {
 	volatile uint8_t reg;
-	volatile uint32_t idcode;
+	volatile uint32_t val;
+	volatile uint32_t onBits = 0;
+	volatile uint8_t ack[3] = 0;
+	volatile uint8_t parity = 0;
 	int i;
 
 	// Start:High
@@ -116,18 +117,34 @@ uint32_t readIDCode(void)
 	PORT2.PODR.BIT.B1 = 1;
 	tick();
 	
-
 	// A(3:2) 00
-	PORT2.PODR.BIT.B1 = 0;
+	onBits = 1;
+	if (addr & 0x02)
+	{
+		onBits++;
+	}
+	reg = (addr & 0x02) >> 1;
+	PORT2.PODR.BIT.B1 = reg;
 	tick();
-	PORT2.PODR.BIT.B1 = 0;
+
+	if (addr & 0x01)
+	{
+		onBits++;
+	}
+	PORT2.PODR.BIT.B1 = (addr & 0x01);
+	onBits += reg; 
 	tick();
 
 	// parity ODD
-	PORT2.PODR.BIT.B1 = 1;
+	parity = 0;
+	if (onBits % 2)
+	{
+		parity = 1;
+	}
+	PORT2.PODR.BIT.B1 = parity;
 	tick();
-	
-	// stio 0
+
+	// stop 0
 	PORT2.PODR.BIT.B1 = 0;
 	tick();
 
@@ -150,17 +167,37 @@ uint32_t readIDCode(void)
 	
 	PORT2.PODR.BIT.B2 = 1;
 	for(i = 0; i < 500; i++);
-	
-	idcode = 0;
+
+	val = 0;
+	onBits = 0;
 	for(i = 0; i < 32; i++)
   	{
 		tick();
 		reg = PORT2.PIDR.BIT.B1;
-    		idcode |= (reg << i);
+    		val |= (reg << i);
+		if (reg & 0x01)
+		{
+			onBits += 1;
+		}
 	}
+
 	// Read parity
 	tick();
-	parity = PORT2.PIDR.BIT.B1;
-	
-	return idcode;
+	reg = PORT2.PIDR.BIT.B1;
+
+	// calc parity
+	parity = 0;
+	if (onBits % 2)
+	{
+		parity = 1;
+	}
+
+	if (reg != parity)
+	{
+		// data parity not match
+		return -2;
+	}
+
+	*pVal = val;
+	return 0;
 }
