@@ -2,12 +2,11 @@
 #include "iodefine.h"
 #include "cmt0.h"
 
-static uint32_t test = 5;
-static uint32_t mod = 0;
 void main(void)
 {
-	uint32_t idcode;
-	mod = test % 2;
+	volatile uint32_t idcode;
+	volatile uint32_t reg;
+	volatile int32_t ret = 0;
 
 	// クロック発生回路初期化
 	init_clock();
@@ -18,7 +17,17 @@ void main(void)
 	// SWD選択
 	select_swd();
 
-	// reaad idcode
-	read_dp_reg(0x00, &idcode);
+	// Read IDCODE
+	reg = 0;
+	ret = read_dp_reg(0, 0, &idcode);
+
+	// write CTRL
+	reg = 0x50000000;
+	ret = write_dp_reg(0, 1, reg);
+
+	// read CTRL
+	reg = 0;
+	ret = read_dp_reg(0, 1, &reg);
+
 	while(1);
 }

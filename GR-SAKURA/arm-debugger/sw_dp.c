@@ -83,8 +83,8 @@ void select_swd(void)
 
 	
 	#if 1
-	// CMSIS-DAP波形確認
-	// 8クロックとコマンド送信の間でDWOはLOWを出している必要がある
+	// 2クロックとコマンド送信の間でDWOはLOWを出している必要がある
+	// 8 clockとの記載もあるので
 	PORT2.PODR.BIT.B1 = 0;
 	for(i = 0; i < 8; i++)
 	{
@@ -96,14 +96,15 @@ void select_swd(void)
 	for(i = 0; i < 500; i++);
 }
 
-int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
+int32_t read_dp_reg(uint8_t addrHi, uint8_t addrLow, uint32_t *pVal)
 {
 	volatile uint8_t reg;
 	volatile uint32_t val;
 	volatile uint32_t onBits = 0;
-	volatile uint8_t ack[3] = 0;
+	volatile uint8_t ack[3] = {0};
 	volatile uint8_t parity = 0;
-	int i;
+	volatile uint8_t debug;
+	volatile int i;
 
 	// Start:High
 	PORT2.PODR.BIT.B1 = 1;
@@ -115,24 +116,16 @@ int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 
 	// 0:Write 1:Read
 	PORT2.PODR.BIT.B1 = 1;
+	onBits = 1;
 	tick();
 	
-	// A(3:2) 00
-	onBits = 1;
-	if (addr & 0x02)
-	{
-		onBits++;
-	}
-	reg = (addr & 0x02) >> 1;
-	PORT2.PODR.BIT.B1 = reg;
+	// A(3:2) LSB
+	onBits += addrLow; 
+	PORT2.PODR.BIT.B1 = addrLow;
 	tick();
 
-	if (addr & 0x01)
-	{
-		onBits++;
-	}
-	PORT2.PODR.BIT.B1 = (addr & 0x01);
-	onBits += reg; 
+	onBits += addrHi; 
+	PORT2.PODR.BIT.B1 = addrHi;
 	tick();
 
 	// parity ODD
@@ -141,6 +134,8 @@ int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 	{
 		parity = 1;
 	}
+	
+	debug = parity;
 	PORT2.PODR.BIT.B1 = parity;
 	tick();
 
@@ -155,15 +150,18 @@ int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 	PORT2.PDR.BIT.B1 = 0;	
 	tick();
 
-  	// =======================================================
-	// Read ACK
-	// =======================================================
+	// Check ACK
 	tick();
 	ack[0] = PORT2.PIDR.BIT.B1;
 	tick();
 	ack[1] = PORT2.PIDR.BIT.B1;
 	tick();
 	ack[2] = PORT2.PIDR.BIT.B1;
+	if ((ack[0] != 1) || (ack[1] != 0)  && (ack[2] != 0))
+	{
+		// Not OK
+		return -1;
+	}
 	
 	PORT2.PODR.BIT.B2 = 1;
 	for(i = 0; i < 500; i++);
@@ -172,6 +170,7 @@ int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 	onBits = 0;
 	for(i = 0; i < 32; i++)
   	{
+		// LSB first
 		tick();
 		reg = PORT2.PIDR.BIT.B1;
     		val |= (reg << i);
@@ -199,5 +198,120 @@ int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 	}
 
 	*pVal = val;
+
+	PORT2.PCR.BIT.B1 = 0;	// disable pull up.
+	PORT2.PODR.BIT.B1 = 0;	
+	PORT2.PDR.BIT.B1 = 1;	
+	for(i = 0; i < 500; i++);
+
+	// 4クロックとコマンド送信の間でDWOはLOWを出している必要がある
+	PORT2.PODR.BIT.B1 = 0;
+	for(i = 0; i < 4; i++)
+	{
+		tick();
+	}
+
+	return 0;
+}
+
+int32_t write_dp_reg(uint8_t addrHi, uint8_t addrLow, uint32_t *pVal)
+{
+	volatile uint8_t reg;
+	volatile uint32_t val;
+	volatile uint32_t onBits = 0;
+	volatile uint8_t ack[3] = 0;
+	volatile uint8_t parity = 0;
+	volatile uint8_t debug = 0;
+	int i;
+
+	// Start:High
+	PORT2.PODR.BIT.B1 = 1;
+	tick();
+	
+	// APnDP:DP(0:DP 1:AP) Low
+	PORT2.PODR.BIT.B1 = 0;
+	tick();
+
+	// 0:Write 1:Read
+	PORT2.PODR.BIT.B1 = 0;
+	tick();
+	
+	// A(3:2) LSB
+	onBits += addrLow;
+	PORT2.PODR.BIT.B1 = addrLow;
+	tick();
+
+	onBits += addrHi;
+	PORT2.PODR.BIT.B1 = addrHi;
+	tick();
+
+	// parity even
+	parity = 0;
+	if (onBits % 2)
+	{
+		parity = 1;
+	}
+	PORT2.PODR.BIT.B1 = parity;
+	tick();
+
+	// stop 0
+	PORT2.PODR.BIT.B1 = 0;
+	tick();
+
+	// Park
+	// Not driven by the host must be read as 1 by the target because of the pull-up.
+	PORT2.PODR.BIT.B1 = 1;
+	PORT2.PCR.BIT.B1 = 1;	// enable pull up.
+	PORT2.PDR.BIT.B1 = 0;	
+	tick();
+
+	// Check ACK
+	tick();
+	ack[0] = PORT2.PIDR.BIT.B1;
+	tick();
+	ack[1] = PORT2.PIDR.BIT.B1;
+	tick();
+	ack[2] = PORT2.PIDR.BIT.B1;
+	if ((ack[0] != 1) || (ack[1] != 0)  && (ack[2] != 0))
+	{
+		// Not OK
+		return -1;
+	}
+	
+	PORT2.PODR.BIT.B2 = 1;
+	for(i = 0; i < 500; i++);
+
+
+	PORT2.PDR.BIT.B1 = 1;
+	val = *pVal;
+	onBits = 0;
+	for(i = 0; i < 32; i++)
+  	{
+		// LSB first
+		reg = (val >> i) & 0x01;
+		onBits += reg;
+		PORT2.PIDR.BIT.B1 = reg;
+		tick();
+	}
+
+	// calc parity
+	parity = 0;
+	if (onBits % 2)
+	{
+		parity = 1;
+	}
+	
+	// send parity
+	debug = parity;
+	PORT2.PIDR.BIT.B1 = parity;
+	tick();
+
+	// 2クロックとコマンド送信の間でDWOはLOWを出している必要がある
+	PORT2.PODR.BIT.B1 = 0;
+	for(i = 0; i < 2; i++)
+	{
+		tick();
+	}
+
 	return 0;
 }
