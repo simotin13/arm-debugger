@@ -97,7 +97,7 @@ void select_swd(void)
 	for(i = 0; i < 500; i++);
 }
 
-int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
+int32_t read_reg(uint8_t type, uint8_t addr, uint32_t *pVal)
 {
 	volatile uint8_t reg;
 	volatile uint32_t val;
@@ -111,13 +111,16 @@ int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 	PORT2.PODR.BIT.B1 = 1;
 	tick();
 	
+	onBits = 0;
+
 	// APnDP:DP(0:DP 1:AP) Low
-	PORT2.PODR.BIT.B1 = 0;
+	PORT2.PODR.BIT.B1 = type;
+	onBits += type;
 	tick();
 
 	// 0:Write 1:Read
 	PORT2.PODR.BIT.B1 = 1;
-	onBits = 1;
+	onBits += 1;
 	tick();
 	
 	// A(3:2) LSB
@@ -152,6 +155,15 @@ int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 	PORT2.PCR.BIT.B1 = 1;	// enable pull up.
 	PORT2.PDR.BIT.B1 = 0;	
 	tick();
+
+	// OFF 出力
+	tmr_waiting = 1;
+	cmt0_clear_count();
+	PORT2.PODR.BIT.B2 = 0;
+
+	// タイマ起動
+	cmt0_start();
+	while(tmr_waiting != 0);	
 
 	// Check ACK
 	tick();
@@ -217,7 +229,7 @@ int32_t read_dp_reg(uint8_t addr, uint32_t *pVal)
 	return 0;
 }
 
-int32_t write_dp_reg(uint8_t addr, uint32_t val)
+int32_t write_reg(uint8_t type, uint8_t addr, uint32_t val)
 {
 	volatile uint8_t reg;
 	volatile uint32_t onBits = 0;
@@ -230,8 +242,10 @@ int32_t write_dp_reg(uint8_t addr, uint32_t val)
 	PORT2.PODR.BIT.B1 = 1;
 	tick();
 	
-	// APnDP:DP(0:DP 1:AP) Low
-	PORT2.PODR.BIT.B1 = 0;
+	onBits = 0;
+	// APnDP:DP(0:DP 1:AP)
+	PORT2.PODR.BIT.B1 = type;
+	onBits += type;
 	tick();
 
 	// 0:Write 1:Read
@@ -268,6 +282,15 @@ int32_t write_dp_reg(uint8_t addr, uint32_t val)
 	PORT2.PCR.BIT.B1 = 1;	// enable pull up.
 	PORT2.PDR.BIT.B1 = 0;	
 	tick();
+	
+	// OFF 出力
+	tmr_waiting = 1;
+	cmt0_clear_count();
+	PORT2.PODR.BIT.B2 = 0;
+
+	// タイマ起動
+	cmt0_start();
+	while(tmr_waiting != 0);	
 
 	// Check ACK
 	tick();
@@ -291,14 +314,18 @@ int32_t write_dp_reg(uint8_t addr, uint32_t val)
 	for(i = 0; i < 32; i++)
   	{
 		// LSB first
-		reg = (val >> i) & 0x01;
+		reg = val & 1 << i;
+		reg = reg >> i;
+//		reg = (val >> i) & 0x01;
 		onBits += reg;
-		PORT2.PIDR.BIT.B1 = reg;
+		
+		// 書き込み データ1bit出力
+		PORT2.PODR.BIT.B1 = reg;
 		tick();
 	}
 
 	// calc parity
-	parity = 0;
+	parity = 1;
 	if (onBits % 2)
 	{
 		parity = 1;
@@ -311,7 +338,7 @@ int32_t write_dp_reg(uint8_t addr, uint32_t val)
 
 	// 2クロックとコマンド送信の間でDWOはLOWを出している必要がある
 	PORT2.PODR.BIT.B1 = 0;
-	for(i = 0; i < 2; i++)
+	for(i = 0; i < 4; i++)
 	{
 		tick();
 	}

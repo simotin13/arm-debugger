@@ -20,22 +20,39 @@ void main(void)
 
 	// Read IDCODE
 	reg = 0;
-	ret = read_dp_reg(REG_R_IDCODE, &idcode);
+	ret = read_reg(REG_TYPE_DP, REG_R_IDCODE, &idcode);
 
+	#if 1
 	// write CTRL
 	reg = 0x50000000;
-	ret = write_dp_reg(REG_RW_CTRL_STAT, reg);
+	ret = write_reg(REG_TYPE_DP, REG_RW_CTRL_STAT, reg);
+	#endif
+
+	reg = 0;
+	ret = read_reg(REG_TYPE_DP, REG_RW_CTRL_STAT, &reg);
 
 	// read CTRL
+	#if 0	// Å• clear errors
 	reg = 0;
-	ret = read_dp_reg(REG_RW_CTRL_STAT, &reg);
-	
+	ret = read_reg(REG_TYPE_DP, REG_RW_CTRL_STAT, &reg);
+
 	reg = 0x1E;
-	ret = write_dp_reg(REG_W_ABORT, reg);
+	ret = write_reg(REG_TYPE_DP, REG_W_ABORT, reg);
 
 	// read CTRL
 	reg = 0;
-	ret = read_dp_reg(REG_RW_CTRL_STAT, &reg);
+	ret = read_reg(REG_TYPE_DP, REG_RW_CTRL_STAT, &reg);
+	#endif	// Å£ clear errors
+
+	// Select AP-Bank
+	reg = 0x000000F0;
+	ret = write_reg(REG_TYPE_DP, REG_RW_SELECT, reg);
+
+	reg = 0;
+	ret = read_reg(REG_TYPE_DP, REG_RW_CTRL_STAT, &reg);
+	
+	reg = 0xFFFFFFFF;
+	ret = read_reg(REG_TYPE_AP, REG_AP_BANK_F_IDR, &reg);
 
 	while(1);
 }
