@@ -134,7 +134,7 @@ int32_t read_reg(uint8_t type, uint8_t addr, uint32_t *pVal)
 	PORT2.PODR.BIT.B1 = reg;
 	tick();
 
-	// parity ODD
+	// parity even
 	parity = 0;
 	if (onBits % 2)
 	{
@@ -199,7 +199,7 @@ int32_t read_reg(uint8_t type, uint8_t addr, uint32_t *pVal)
 	tick();
 	reg = PORT2.PIDR.BIT.B1;
 
-	// calc parity
+	// parity even
 	parity = 0;
 	if (onBits % 2)
 	{
@@ -269,6 +269,7 @@ int32_t write_reg(uint8_t type, uint8_t addr, uint32_t val)
 	{
 		parity = 1;
 	}
+
 	PORT2.PODR.BIT.B1 = parity;
 	tick();
 
@@ -308,15 +309,11 @@ int32_t write_reg(uint8_t type, uint8_t addr, uint32_t val)
 	PORT2.PODR.BIT.B2 = 1;
 	for(i = 0; i < 500; i++);
 
-
 	PORT2.PDR.BIT.B1 = 1;
 	onBits = 0;
 	for(i = 0; i < 32; i++)
   	{
-		// LSB first
-		reg = val & 1 << i;
-		reg = reg >> i;
-//		reg = (val >> i) & 0x01;
+		reg = (val >> i) & 0x01;
 		onBits += reg;
 		
 		// 書き込み データ1bit出力
@@ -324,8 +321,8 @@ int32_t write_reg(uint8_t type, uint8_t addr, uint32_t val)
 		tick();
 	}
 
-	// calc parity
-	parity = 1;
+	// parity even
+	parity = 0;
 	if (onBits % 2)
 	{
 		parity = 1;
